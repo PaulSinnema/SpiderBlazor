@@ -174,6 +174,130 @@ html, body {
     font-size: var(--mw);
 }
 
+/* Bottom sheet with controls */
+.sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(8, 36, 20, .94);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, .2);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, .35);
+    transform: translateY(105%);
+    transition: transform .25s ease;
+}
+
+.sheet.open { transform: none; }
+
+.sheet-stats {
+    text-align: center;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 8px;
+}
+
+/* Five equal tiles */
+.sheet-buttons {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 96px));
+    justify-content: center;
+    gap: 10px;
+}
+
+.sheet-btn {
+    --accent: #2e9d5b;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 84px;
+    padding: 8px 4px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .04));
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 16px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15), 0 4px 10px rgba(0, 0, 0, .25);
+    color: #fff;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    cursor: pointer;
+    transition: transform .12s ease, background .2s ease;
+}
+
+.sheet-btn span:last-child {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sheet-btn .chip {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent));
+    box-shadow: 0 3px 8px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+
+.sheet-btn .chip svg { width: 22px; height: 22px; color: #fff; }
+
+.sheet-btn:not(:disabled):hover { background: linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .07)); }
+.sheet-btn:not(:disabled):active { transform: scale(.94); }
+.sheet-btn:disabled { opacity: .35; cursor: default; box-shadow: none; }
+
+.sheet-btn.new { --accent: #2e9d5b; }
+.sheet-btn.restart { --accent: #e08a1e; }
+.sheet-btn.undo { --accent: #3a7bd5; }
+.sheet-btn.hint { --accent: #d9a400; }
+.sheet-btn.settings { --accent: #8a63d2; }
+
+@media (max-width: 480px) {
+    .sheet-buttons { gap: 6px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .sheet { padding-left: 8px; padding-right: 8px; }
+    .sheet-btn { height: 74px; padding: 6px 1px; font-size: 10px; letter-spacing: -.02em; border-radius: 13px; }
+    .sheet-btn .chip { width: 34px; height: 34px; }
+    .sheet-btn .chip svg { width: 19px; height: 19px; }
+}
+
+/* Small handle to open the sheet */
+.sheet-handle {
+    position: fixed;
+    left: 50%;
+    bottom: calc(4px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: 80px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    z-index: 1100;
+}
+
+.sheet-handle::after {
+    content: "";
+    position: absolute;
+    left: 15px;
+    right: 15px;
+    top: 8px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, .45);
+}
+
+.sheet-handle.hidden { display: none; }
+
+/* Room above the board and for the handle below it */
+.board { margin: 8px 0 28px; }
+
 /* Top row: completed runs and stock, full card size */
 .toprow { position: absolute; left: 0; top: 0; right: 0; }
 

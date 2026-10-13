@@ -1,4 +1,4 @@
-namespace SpiderBlazor.Game;
+﻿namespace SpiderBlazor.Game;
 
 public sealed class SpiderGame
 {
@@ -43,8 +43,22 @@ public sealed class SpiderGame
         }
 
         State = new GameState { Columns = cols, Stock = cards.Skip(pos).ToList(), SuitCount = suits };
+        State.Start = State.Clone();
         history.Clear();
         Hint = null;
+    }
+
+    public bool CanRestart => State.Start is not null;
+
+    // Replay the same deal from the beginning
+    public bool Restart()
+    {
+        if (State.Start is not { } start) return false;
+        State = start.Clone();
+        State.Start = start;
+        history.Clear();
+        Hint = null;
+        return true;
     }
 
     public void Restore(GameState state)

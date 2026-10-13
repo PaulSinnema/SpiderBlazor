@@ -9,14 +9,6 @@
 <PageTitle>Spider</PageTitle>
 
 <div class="table">
-    <header class="topbar">
-        <button class="btn" @onclick="NewClicked">＋<span class="label"> @T("New")</span></button>
-        <button class="btn" @onclick="() => showSettings = true" title="@T("Settings")">⚙︎</button>
-        <span class="stats">@T("Score") @game.State.Score · @T("Moves") @game.State.Moves</span>
-        <button class="btn" @onclick="ShowHint">💡<span class="label"> @T("Hint")</span></button>
-        <button class="btn" @onclick="Undo" disabled="@(!game.CanUndo)">↶<span class="label"> @T("Undo")</span></button>
-    </header>
-
     <div class="board @(dimFixed ? "dim-fixed" : "")" @ref="boardEl">
         @if (cw > 0)
         {
@@ -58,6 +50,19 @@
         }
     </div>
 </div>
+
+@* Bottom sheet with all controls; toggled by tapping the empty table or the handle *@
+<button class="sheet-handle @(menuOpen ? "hidden" : "")" @onclick="() => menuOpen = true" aria-label="Menu"></button>
+<nav class="sheet @(menuOpen ? "open" : "")">
+    <div class="sheet-stats">@T("Score") @game.State.Score · @T("Moves") @game.State.Moves</div>
+    <div class="sheet-buttons">
+        <button class="sheet-btn new" @onclick="NewClicked">@Icon("new")<span>@T("New")</span></button>
+        <button class="sheet-btn restart" @onclick="RestartClicked" disabled="@(!game.CanRestart)">@Icon("restart")<span>@T("Restart")</span></button>
+        <button class="sheet-btn undo" @onclick="Undo" disabled="@(!game.CanUndo)">@Icon("undo")<span>@T("Undo")</span></button>
+        <button class="sheet-btn hint" @onclick="HintFromMenu">@Icon("hint")<span>@T("Hint")</span></button>
+        <button class="sheet-btn settings" @onclick="OpenSettings">@Icon("settings")<span>@T("Settings")</span></button>
+    </div>
+</nav>
 
 @if (message is not null)
 {
@@ -117,6 +122,17 @@ else if (showNewGame)
         </div>
     </div>
 }
+else if (showRestart)
+{
+    <div class="overlay" @onclick="() => showRestart = false">
+        <div class="dialog" @onclick:stopPropagation="true">
+            <h2>@T("Restart")</h2>
+            <p>@T("RestartQ")</p>
+            <button class="btn" @onclick="RestartGame">@T("Restart")</button>
+            <button class="btn secondary" @onclick="() => showRestart = false">@T("Cancel")</button>
+        </div>
+    </div>
+}
 else if (game.IsWon)
 {
     <div class="overlay">
@@ -124,6 +140,7 @@ else if (game.IsWon)
             <h2>@T("YouWon")</h2>
             <p>@T("Score") @game.State.Score · @T("Moves") @game.State.Moves</p>
             <button class="btn" @onclick="StartGame">@T("NewGame")</button>
+            <button class="btn secondary" @onclick="RestartGame">@T("Restart")</button>
         </div>
     </div>
 }
@@ -157,7 +174,7 @@ else if (game.IsWon)
     private int? shakeId;
     private string? message;
     private bool showNewGame, showSettings, winRecorded;
-    private bool dimFixed;
+    private bool dimFixed, menuOpen, showRestart;
 
     private readonly record struct Placed(Card Card, int Col, int Index, string Style);
 
@@ -221,11 +238,46 @@ else if (game.IsWon)
 
     // MARK: Actions
 
+    [JSInvokable]
+    public void OnEmptyTap()
+    {
+        menuOpen = !menuOpen;
+        StateHasChanged();
+    }
+
     private async Task NewClicked()
     {
+        menuOpen = false;
         // Ask only when a game is in progress
         if (game.State.Moves > 0 && !game.IsWon) showNewGame = true;
         else await StartGame();
+    }
+
+    private void RestartClicked()
+    {
+        menuOpen = false;
+        showRestart = true;
+    }
+
+    private async Task RestartGame()
+    {
+        if (!game.Restart()) return;
+        MarkAllFresh();
+        showRestart = false;
+        winRecorded = false;
+        await AfterChangeAsync();
+    }
+
+    private async Task HintFromMenu()
+    {
+        menuOpen = false;
+        await ShowHint();
+    }
+
+    private void OpenSettings()
+    {
+        menuOpen = false;
+        showSettings = true;
     }
 
     private async Task Deal()
@@ -447,6 +499,21 @@ else if (game.IsWon)
     private bool IsHinted(int col, int index) =>
         game.Hint is { } h
         && ((h.From == col && index >= h.Index) || (h.To == col && index == game.Columns[col].Count - 1));
+
+    // Line icons for the menu buttons
+    private static MarkupString Icon(string name)
+    {
+        var paths = name switch
+        {
+            "new" => "<rect x=\"6\" y=\"3\" width=\"12\" height=\"18\" rx=\"2\"/><path d=\"M12 9v6M9 12h6\"/>",
+            "restart" => "<path d=\"M3.5 12a8.5 8.5 0 1 0 2.6-6.1\"/><path d=\"M3 4v5h5\"/>",
+            "undo" => "<path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10.5a5.5 5.5 0 0 1 0 11H11\"/>",
+            "hint" => "<path d=\"M9 18h6M10 21h4\"/><path d=\"M12 3a6 6 0 0 0-3.8 10.6c.6.5.8 1.2.8 1.9V16h6v-.5c0-.7.2-1.4.8-1.9A6 6 0 0 0 12 3z\"/>",
+            _ => "<path d=\"M4 7h9M17 7h3M4 17h3M11 17h9\"/><circle cx=\"15\" cy=\"7\" r=\"2\"/><circle cx=\"9\" cy=\"17\" r=\"2\"/>"
+        };
+        return new MarkupString(
+            $"<span class=\"chip\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">{paths}</svg></span>");
+    }
 
     // Small suit icons for the difficulty options
     private static MarkupString SuitIcons(int count)

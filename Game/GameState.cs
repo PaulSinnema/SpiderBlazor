@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace SpiderBlazor.Game;
 
@@ -11,6 +11,9 @@ public sealed class GameState
     public int Score { get; set; } = 500;
     public int SuitCount { get; set; } = 1;
 
+    // Initial deal, used for restart; never mutated
+    public GameState? Start { get; set; }
+
     // Cards are immutable records, so copying the lists is enough
     public GameState Clone() => new()
     {
@@ -19,7 +22,8 @@ public sealed class GameState
         Completed = Completed.ToList(),
         Moves = Moves,
         Score = Score,
-        SuitCount = SuitCount
+        SuitCount = SuitCount,
+        Start = Start
     };
 
     public bool IsValid() =>

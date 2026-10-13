@@ -1,6 +1,6 @@
-// Pointer-based drag & tap for mouse, touch and pen
+﻿// Pointer-based drag & tap for mouse, touch and pen
 window.spider = (() => {
-    let ref = null, board = null, observer = null, drag = null;
+    let ref = null, board = null, observer = null, drag = null, empty = null;
 
     function init(dotnet, el) {
         ref = dotnet;
@@ -31,7 +31,11 @@ window.spider = (() => {
     function down(e) {
         if (drag || e.button !== 0) return;
         const card = e.target.closest('.cards .card');
-        if (!card) return;
+        if (!card) {
+            // Tap on empty table (not stock/top row) toggles the menu
+            if (!e.target.closest('.toprow')) empty = { x: e.clientX, y: e.clientY, id: e.pointerId };
+            return;
+        }
         e.preventDefault();
         drag = {
             col: +card.dataset.col,
@@ -60,6 +64,12 @@ window.spider = (() => {
     }
 
     async function up(e) {
+        if (empty && e.pointerId === empty.id) {
+            const still = Math.hypot(e.clientX - empty.x, e.clientY - empty.y) < 10;
+            empty = null;
+            if (still) await ref?.invokeMethodAsync('OnEmptyTap');
+            return;
+        }
         if (!drag || e.pointerId !== drag.id) return;
         const d = drag;
         drag = null;
@@ -82,6 +92,7 @@ window.spider = (() => {
     }
 
     function cancel(e) {
+        empty = null;
         if (!drag || e.pointerId !== drag.id) return;
         drag.els.forEach(el => { el.classList.remove('dragging'); el.style.transform = ''; });
         drag = null;

@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using Microsoft.AspNetCore.Components;
 using SpiderBlazor.Localization;
@@ -10,8 +10,12 @@ public static class CardSvg
 {
     private static readonly Dictionary<(int, Suit, Lang), MarkupString> Cache = [];
 
-    private const double Top = 36, Bottom = 104, Mid = 70;
-    private const double Left = 30, Center = 50, Right = 70;
+    private const double Top = 40, Bottom = 100, Mid = 70;
+    private const double Left = 28, Center = 50, Right = 72;
+    private const double PipSize = 18;
+
+    // Four-colour deck: robe colour per suit (spades, hearts, clubs, diamonds)
+    private static readonly string[] Robes = ["#23345c", "#b3122e", "#1d6b35", "#1450c8"];
 
     public static MarkupString Face(int rank, Suit suit, Lang lang)
     {
@@ -20,12 +24,12 @@ public static class CardSvg
         var sb = new StringBuilder(2048);
         sb.Append("<svg class=\"face\" viewBox=\"0 0 100 140\" xmlns=\"http://www.w3.org/2000/svg\">");
 
-        var corner = Corner(Text.RankLabel(lang, rank), (int)suit);
-        sb.Append(corner);
-        sb.Append("<g transform=\"rotate(180 50 70)\">").Append(corner).Append("</g>");
+        var label = Text.RankLabel(lang, rank);
+        sb.Append(Corner(label, (int)suit));
+        sb.Append(BottomCorner(label, (int)suit));
 
-        if (rank == 1) Use(sb, (int)suit, Center, 72, 46, false);
-        else if (rank <= 10) foreach (var (x, y) in Pips(rank)) Use(sb, (int)suit, x, y, 15, y > Mid);
+        // Number cards: one large suit in the centre; court cards: picture
+        if (rank <= 10) Use(sb, (int)suit, Center, Mid, 56, false);
         else Figure(sb, rank, suit);
 
         sb.Append("</svg>");
@@ -36,11 +40,20 @@ public static class CardSvg
 
     private static string Corner(string label, int suit)
     {
-        var size = label.Length > 1 ? 15 : 17;
-        var spacing = label.Length > 1 ? " letter-spacing=\"-1.5\"" : "";
-        return $"<text class=\"rank\" x=\"5\" y=\"17\" font-size=\"{size}\"{spacing}>{label}</text>"
-             + $"<use href=\"#suit-{suit}\" x=\"6\" y=\"21\" width=\"11\" height=\"11\"/>"
-             + $"<use href=\"#suit-{suit}\" x=\"84\" y=\"5\" width=\"11\" height=\"11\"/>";
+        // Large sans-serif index; "10" slightly condensed to fit
+        var size = label.Length > 1 ? 27 : 30;
+        var spacing = label.Length > 1 ? " letter-spacing=\"-2\"" : "";
+        return $"<text class=\"rank\" x=\"5\" y=\"27\" font-size=\"{size}\"{spacing}>{label}</text>"
+             + $"<use href=\"#suit-{suit}\" x=\"73\" y=\"4\" width=\"23\" height=\"23\"/>";
+    }
+
+    // Upright bottom index: rank bottom-right, suit bottom-left
+    private static string BottomCorner(string label, int suit)
+    {
+        var size = label.Length > 1 ? 27 : 30;
+        var spacing = label.Length > 1 ? " letter-spacing=\"-2\"" : "";
+        return $"<text class=\"rank\" x=\"95\" y=\"134\" text-anchor=\"end\" font-size=\"{size}\"{spacing}>{label}</text>"
+             + $"<use href=\"#suit-{suit}\" x=\"4\" y=\"113\" width=\"23\" height=\"23\"/>";
     }
 
     private static void Use(StringBuilder sb, int suit, double cx, double cy, double size, bool flip)
@@ -77,8 +90,7 @@ public static class CardSvg
     // Original double-ended court figure: top half drawn, then mirrored
     private static void Figure(StringBuilder sb, int rank, Suit suit)
     {
-        var red = CardText.IsRed(suit);
-        var robe = red ? "#b3122e" : "#23345c";
+        var robe = Robes[(int)suit];
         const string gold = "#d9a92e", skin = "#f2cfae";
         var s = (int)suit;
 
@@ -114,13 +126,12 @@ public static class CardSvg
                 break;
         }
 
-        var h = half.ToString();
-        sb.Append("<rect x=\"20\" y=\"24\" width=\"60\" height=\"92\" rx=\"3\" fill=\"#fbf3df\" stroke=\"currentColor\" stroke-width=\"1.2\"/>");
+        // Shrink the figure so it fits inside the frame between the large corners
+        var h = $"<g transform=\"translate(50 70) scale(0.85) translate(-50 -70)\">{half}</g>";
+        sb.Append("<rect x=\"22\" y=\"31\" width=\"56\" height=\"78\" rx=\"3\" fill=\"#fbf3df\" stroke=\"currentColor\" stroke-width=\"1.2\"/>");
         sb.Append(h);
         sb.Append("<g transform=\"rotate(180 50 70)\">").Append(h).Append("</g>");
-        sb.Append("<line x1=\"20\" y1=\"70\" x2=\"80\" y2=\"70\" stroke=\"currentColor\" stroke-opacity=\".35\" stroke-width=\"0.6\"/>");
-        sb.Append($"<use href=\"#suit-{s}\" x=\"22\" y=\"26\" width=\"9\" height=\"9\"/>");
-        sb.Append($"<use href=\"#suit-{s}\" x=\"69\" y=\"105\" width=\"9\" height=\"9\" transform=\"rotate(180 73.5 109.5)\"/>");
+        sb.Append("<line x1=\"22\" y1=\"70\" x2=\"78\" y2=\"70\" stroke=\"currentColor\" stroke-opacity=\".35\" stroke-width=\"0.6\"/>");
     }
 
     private static string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);

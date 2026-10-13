@@ -1,4 +1,4 @@
-@page "/"
+﻿@page "/"
 @using System.Globalization
 @using System.Text.Json
 @using SpiderBlazor.Game
@@ -17,7 +17,7 @@
         <button class="btn" @onclick="Undo" disabled="@(!game.CanUndo)">↶<span class="label"> @T("Undo")</span></button>
     </header>
 
-    <div class="board" @ref="boardEl">
+    <div class="board @(dimFixed ? "dim-fixed" : "")" @ref="boardEl">
         @if (cw > 0)
         {
             <div class="slots">
@@ -37,26 +37,26 @@
                     </div>
                 }
             </div>
+
+            @* Top row: completed runs left, stock right *@
+            <div class="toprow">
+                @for (var i = 0; i < game.State.Completed.Count; i++)
+                {
+                    var suit = game.State.Completed[i];
+                    <div class="card up s@((int)suit)" style="@TopCardStyle(ColX(i), i)">
+                        @CardSvg.Face(13, suit, lang)
+                    </div>
+                }
+                <div class="slot stock-slot" style="@TopCardStyle(ColX(9), 0)"></div>
+                <div class="stock @(game.CanDeal ? "" : "dim")" @onclick="Deal">
+                    @for (var i = 0; i < game.DealsLeft; i++)
+                    {
+                        <div class="card down" style="@TopCardStyle(ColX(9) - i * cw * 0.12, i + 1)"></div>
+                    }
+                </div>
+            </div>
         }
     </div>
-
-    <footer class="bottombar">
-        <div class="pile" style="@PileWidth(game.State.Completed.Count, 0.3)">
-            @for (var i = 0; i < game.State.Completed.Count; i++)
-            {
-                var suit = game.State.Completed[i];
-                <div class="card up mini @(CardText.IsRed(suit) ? "red" : "")" style="@MiniOffset("left", i, 0.3)">
-                    @CardSvg.Face(13, suit, lang)
-                </div>
-            }
-        </div>
-        <div class="pile stock @(game.CanDeal ? "" : "dim")" style="@PileWidth(game.DealsLeft, 0.25)" @onclick="Deal">
-            @for (var i = 0; i < game.DealsLeft; i++)
-            {
-                <div class="card down mini" style="@MiniOffset("right", i, 0.25)"></div>
-            }
-        </div>
-    </footer>
 </div>
 
 @if (message is not null)
@@ -86,6 +86,12 @@
                 <p class="note">@T("NextGame")</p>
                 <button class="btn" @onclick="StartFromSettings">@T("StartNow")</button>
             }
+
+            <h3>@T("Display")</h3>
+            <button class="option @(dimFixed ? "selected" : "")" @onclick="ToggleDimFixed">
+                <span class="opt-title">@T("HighlightMovable")</span>
+                <span class="opt-wins">@T(dimFixed ? "On" : "Off")</span>
+            </button>
 
             <h3>@T("Language")</h3>
             <div class="langs">
@@ -127,6 +133,7 @@ else if (game.IsWon)
     private const string WinsKey = "spider.wins";
     private const string SuitsKey = "spider.suits";
     private const string LangKey = "spider.lang";
+    private const string DimKey = "spider.dimfixed";
 
     private readonly record struct Level(int Suits, string Key, string SuitKey, int Index);
 
@@ -150,6 +157,7 @@ else if (game.IsWon)
     private int? shakeId;
     private string? message;
     private bool showNewGame, showSettings, winRecorded;
+    private bool dimFixed;
 
     private readonly record struct Placed(Card Card, int Col, int Index, string Style);
 
@@ -175,7 +183,7 @@ else if (game.IsWon)
         boardH = h;
         gap = Math.Max(3, w * 0.006);
         var byWidth = (w - gap * 11) / 10;
-        var byHeight = h / 3.0 / 1.4;
+        var byHeight = h / 4.2 / 1.4;
         cw = Math.Max(10, Math.Min(byWidth, byHeight));
         offsetX = (w - (cw * 10 + gap * 9)) / 2;
         StateHasChanged();
@@ -272,6 +280,12 @@ else if (game.IsWon)
         await SetItemAsync(SuitsKey, value.ToString(CultureInfo.InvariantCulture));
     }
 
+    private async Task ToggleDimFixed()
+    {
+        dimFixed = !dimFixed;
+        await SetItemAsync(DimKey, dimFixed ? "1" : "0");
+    }
+
     private async Task SetLang(Lang value)
     {
         lang = value;
@@ -322,6 +336,8 @@ else if (game.IsWon)
     {
         try
         {
+            dimFixed = await JS.InvokeAsync<string?>("localStorage.getItem", DimKey) == "1";
+
             var langCode = await JS.InvokeAsync<string?>("localStorage.getItem", LangKey)
                            ?? await JS.InvokeAsync<string?>("spider.language");
             lang = Text.FromCode(langCode);
@@ -374,7 +390,7 @@ else if (game.IsWon)
             {
                 var delay = freshOrder.TryGetValue(col[i].Id, out var o) ? $"animation-delay:{o * 18}ms;" : "";
                 list.Add(new Placed(col[i], c, i,
-                    $"left:{Px(x)};top:{Px(ys[i])};width:{Px(cw)};height:{Px(ch)};font-size:{Px(cw)};z-index:{i + 1};{delay}"));
+                    $"left:{Px(x)};top:{Px(RowTop + ys[i])};width:{Px(cw)};height:{Px(ch)};font-size:{Px(cw)};z-index:{i + 1};{delay}"));
             }
         }
         // Stable DOM order keeps CSS transitions alive when cards change column
@@ -389,10 +405,10 @@ else if (game.IsWon)
         var up = ch * 0.28;
         var nDown = col.Count(k => !k.FaceUp);
         var nUp = Math.Max(col.Count(k => k.FaceUp) - 1, 0);
-        var avail = boardH - ch - 4;
+        var avail = boardH - RowTop - ch - 4;
 
         if (nUp > 0 && nDown * down + nUp * up > avail)
-            up = Math.Max((avail - nDown * down) / nUp, ch * 0.1);
+            up = Math.Max((avail - nDown * down) / nUp, ch * 0.17);
         if (nDown > 0 && nDown * down + nUp * up > avail)
             down = Math.Max((avail - nUp * up) / nDown, ch * 0.04);
 
@@ -408,13 +424,19 @@ else if (game.IsWon)
 
     private double ColX(int c) => offsetX + c * (cw + gap);
 
+    // Tableau starts below the top row (completed runs + stock)
+    private double RowTop => cw * 1.4 + gap * 3;
+
     private string SlotStyle(int c) =>
-        $"left:{Px(ColX(c))};top:0;width:{Px(cw)};height:{Px(cw * 1.4)};border-radius:{Px(cw * 0.08)}";
+        $"left:{Px(ColX(c))};top:{Px(RowTop)};width:{Px(cw)};height:{Px(cw * 1.4)};border-radius:{Px(cw * 0.08)}";
+
+    private string TopCardStyle(double x, int z) =>
+        $"left:{Px(x)};top:0;width:{Px(cw)};height:{Px(cw * 1.4)};font-size:{Px(cw)};border-radius:{Px(cw * 0.08)};z-index:{z}";
 
     private string CardClass(Placed p)
     {
         var cls = p.Card.FaceUp ? "card up" : "card down";
-        if (p.Card.FaceUp && CardText.IsRed(p.Card.Suit)) cls += " red";
+        if (p.Card.FaceUp) cls += $" s{(int)p.Card.Suit}";
         if (game.CanPickUp(p.Col, p.Index)) cls += " movable";
         if (IsHinted(p.Col, p.Index)) cls += " hint";
         if (shakeId == p.Card.Id) cls += " shake";
@@ -430,7 +452,7 @@ else if (game.IsWon)
     private static MarkupString SuitIcons(int count)
     {
         var icons = string.Concat(Enumerable.Range(0, count).Select(s =>
-            $"<svg class=\"ico{(CardText.IsRed((Suit)s) ? " red" : "")}\" viewBox=\"0 0 100 100\"><use href=\"#suit-{s}\"/></svg>"));
+            $"<svg class=\"ico s{s}\" viewBox=\"0 0 100 100\"><use href=\"#suit-{s}\"/></svg>"));
         return new MarkupString($"<span class=\"icons\">{icons}</span>");
     }
 

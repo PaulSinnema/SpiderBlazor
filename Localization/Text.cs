@@ -1,4 +1,4 @@
-namespace SpiderBlazor.Localization;
+﻿namespace SpiderBlazor.Localization;
 
 public enum Lang { En, Nl, De, Fr }
 
@@ -27,6 +27,10 @@ public static class Text
         ["NextGame"] = ["Applies from the next game", "Geldt vanaf het volgende spel", "Gilt ab dem nächsten Spiel", "S'applique à la prochaine partie"],
         ["StartNow"] = ["Start new game now", "Nu nieuw spel starten", "Jetzt neues Spiel starten", "Nouvelle partie maintenant"],
         ["Language"] = ["Language", "Taal", "Sprache", "Langue"],
+        ["Display"] = ["Display", "Weergave", "Anzeige", "Affichage"],
+        ["HighlightMovable"] = ["Highlight movable cards", "Verplaatsbare kaarten markeren", "Bewegliche Karten hervorheben", "Cartes déplaçables en évidence"],
+        ["On"] = ["On", "Aan", "Ein", "Activé"],
+        ["Off"] = ["Off", "Uit", "Aus", "Désactivé"],
         ["Close"] = ["Close", "Sluiten", "Schließen", "Fermer"],
         ["NewGame"] = ["New game", "Nieuw spel", "Neues Spiel", "Nouvelle partie"],
         ["StartNewQ"] = ["Start a new game?", "Nieuw spel starten?", "Neues Spiel starten?", "Commencer une nouvelle partie ?"],

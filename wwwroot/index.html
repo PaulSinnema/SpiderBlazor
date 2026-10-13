@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="nl">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Spider</title>
+    <base href="/" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link href="manifest.webmanifest" rel="manifest" />
+    <meta name="theme-color" content="#0b3f20" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Spider" />
+    <link rel="apple-touch-icon" href="icon-180.png" />
+    <link rel="icon" type="image/png" href="icon-192.png" />
+</head>
+
+<body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <symbol id="suit-0" viewBox="0 0 100 100" fill="currentColor">
+            <path d="M50 4 C78 28 96 44 96 61 C96 75 85 84 73 84 C64 84 57 80 53 73 C54 82 58 90 67 96 L33 96 C42 90 46 82 47 73 C43 80 36 84 27 84 C15 84 4 75 4 61 C4 44 22 28 50 4 Z" />
+        </symbol>
+        <symbol id="suit-1" viewBox="0 0 100 100" fill="currentColor">
+            <path d="M50 92 C20 68 4 50 4 31 C4 16 16 6 29 6 C39 6 46 12 50 21 C54 12 61 6 71 6 C84 6 96 16 96 31 C96 50 80 68 50 92 Z" />
+        </symbol>
+        <symbol id="suit-2" viewBox="0 0 100 100" fill="currentColor">
+            <circle cx="50" cy="27" r="20" />
+            <circle cx="26" cy="57" r="20" />
+            <circle cx="74" cy="57" r="20" />
+            <path d="M38 36 L62 36 L62 60 L38 60 Z" />
+            <path d="M46 58 C46 76 42 87 32 96 L68 96 C58 87 54 76 54 58 Z" />
+        </symbol>
+        <symbol id="suit-3" viewBox="0 0 100 100" fill="currentColor">
+            <path d="M50 3 Q66 28 88 50 Q66 72 50 97 Q34 72 12 50 Q34 28 50 3 Z" />
+        </symbol>
+    </svg>
+    <div id="app">
+        <div class="loading">Spider…</div>
+    </div>
+
+    <div id="blazor-error-ui">
+        ⚠ Error
+        <a href="" class="reload">↻ Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <script src="js/spider.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script>navigator.serviceWorker.register('service-worker.js');</script>
+</body>
+
+</html>

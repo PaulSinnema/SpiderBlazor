@@ -2,6 +2,26 @@
 window.spider = (() => {
     let ref = null, board = null, observer = null, drag = null, empty = null;
 
+    // Chrome/Edge/Android offer an install prompt; keep it for the settings button
+    let installEvt = null;
+    addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+    addEventListener('appinstalled', () => { installEvt = null; });
+
+    function installState() {
+        if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) return 'installed';
+        if (installEvt) return 'prompt';
+        const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        return ios ? 'ios' : 'manual';
+    }
+
+    async function install() {
+        if (!installEvt) return installState();
+        installEvt.prompt();
+        const choice = await installEvt.userChoice;
+        installEvt = null;
+        return choice.outcome === 'accepted' ? 'installed' : 'dismissed';
+    }
+
     function init(dotnet, el) {
         ref = dotnet;
         board = el;
@@ -264,5 +284,5 @@ window.spider = (() => {
         requestAnimationFrame(frame);
     }
 
-    return { init, dispose, language, flyToStock, flyToFoundation, update, celebrate };
+    return { init, dispose, language, flyToStock, flyToFoundation, update, celebrate, installState, install };
 })();

@@ -107,6 +107,13 @@
             </div>
 
             <h3>App</h3>
+            @if (installState != "installed")
+            {
+                <button class="option update-option install-option" @onclick="InstallApp">
+                    <span class="opt-title">@Icon("install") @T("Install")</span>
+                    <span class="opt-wins">@T("InstallHint")</span>
+                </button>
+            }
             <button class="option update-option" @onclick="UpdateApp">
                 <span class="opt-title">@Icon("update") @T("Update")</span>
                 <span class="opt-wins">@T("UpdateHint")</span>
@@ -125,6 +132,24 @@ else if (showNewGame)
             <p class="opt-sub">@T(CurrentLevel.Key) · @T(CurrentLevel.SuitKey) @SuitIcons(suits)</p>
             <button class="btn" @onclick="StartGame">@T("Start")</button>
             <button class="btn secondary" @onclick="() => showNewGame = false">@T("Cancel")</button>
+        </div>
+    </div>
+}
+else if (installHelp is not null)
+{
+    <div class="overlay" @onclick="() => installHelp = null">
+        <div class="dialog" @onclick:stopPropagation="true">
+            <h2>@T("Install")</h2>
+            @if (installHelp == "ios")
+            {
+                <div class="share-icon">@Icon("share")</div>
+                <p>@T("InstallIos")</p>
+            }
+            else
+            {
+                <p>@T("InstallManual")</p>
+            }
+            <button class="btn" @onclick="() => installHelp = null">OK</button>
         </div>
     </div>
 }
@@ -181,6 +206,8 @@ else if (game.IsWon)
     private string? message;
     private bool showNewGame, showSettings, winRecorded;
     private bool dimFixed, menuOpen, showRestart, undoing;
+    private string installState = "manual";
+    private string? installHelp;
     private readonly HashSet<int> returning = [];
 
     private readonly record struct Placed(Card Card, int Col, int Index, string Style);
@@ -307,10 +334,24 @@ else if (game.IsWon)
         if (result == "offline") Flash(T("Offline"));
     }
 
-    private void OpenSettings()
+    private async Task OpenSettings()
     {
         menuOpen = false;
         showSettings = true;
+        try { installState = await JS.InvokeAsync<string>("spider.installState"); }
+        catch { installState = "manual"; }
+    }
+
+    // Native prompt where the browser supports it, otherwise show instructions
+    private async Task InstallApp()
+    {
+        var result = await JS.InvokeAsync<string>("spider.install");
+        if (result is "ios" or "manual")
+        {
+            showSettings = false;
+            installHelp = result;
+        }
+        else installState = result == "installed" ? "installed" : installState;
     }
 
     private async Task Deal()
@@ -577,6 +618,8 @@ else if (game.IsWon)
             "new" => "<rect x=\"6\" y=\"3\" width=\"12\" height=\"18\" rx=\"2\"/><path d=\"M12 9v6M9 12h6\"/>",
             "restart" => "<path d=\"M3.5 12a8.5 8.5 0 1 0 2.6-6.1\"/><path d=\"M3 4v5h5\"/>",
             "undo" => "<path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10.5a5.5 5.5 0 0 1 0 11H11\"/>",
+            "install" => "<rect x=\"6\" y=\"2\" width=\"12\" height=\"20\" rx=\"2.5\"/><path d=\"M12 8v6M9 11h6\"/><path d=\"M10 19h4\"/>",
+            "share" => "<path d=\"M12 3v12M8 7l4-4 4 4\"/><path d=\"M7 10H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1\"/>",
             "update" => "<path d=\"M7 17a4.5 4.5 0 0 1-.7-8.9A6 6 0 0 1 17.8 8 4.5 4.5 0 0 1 17 17\"/><path d=\"M12 11v9M9 17l3 3 3-3\"/>",
             "hint" => "<path d=\"M9 18h6M10 21h4\"/><path d=\"M12 3a6 6 0 0 0-3.8 10.6c.6.5.8 1.2.8 1.9V16h6v-.5c0-.7.2-1.4.8-1.9A6 6 0 0 0 12 3z\"/>",
             _ => "<path d=\"M4 7h9M17 7h3M4 17h3M11 17h9\"/><circle cx=\"15\" cy=\"7\" r=\"2\"/><circle cx=\"9\" cy=\"17\" r=\"2\"/>"

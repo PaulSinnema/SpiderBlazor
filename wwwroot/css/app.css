@@ -277,6 +277,12 @@ html, body {
 .update-option .opt-title { display: flex; align-items: center; gap: 10px; }
 .update-option .chip { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #1a9fa3; }
 .update-option .chip svg { width: 18px; height: 18px; color: #fff; }
+.install-option .chip { background: #2e9d5b; }
+
+/* Share icon in the iOS install help */
+.share-icon { display: flex; justify-content: center; }
+.share-icon .chip { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 14px; background: #1a73e8; }
+.share-icon .chip svg { width: 30px; height: 30px; color: #fff; }
 
 @media (max-width: 480px) {
     .sheet-buttons { gap: 6px; grid-template-columns: repeat(5, minmax(0, 1fr)); }

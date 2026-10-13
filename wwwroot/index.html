@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="nl">
 
 <head>
@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Spider</title>
     <base href="/" />
+    <script>
+        // Base = folder of the current page, works on localhost and on GitHub Pages (/repo/)
+        document.querySelector('base').setAttribute('href', location.pathname.replace(/[^/]*$/, ''));
+    </script>
     <link rel="stylesheet" href="css/app.css" />
     <link href="manifest.webmanifest" rel="manifest" />
     <meta name="theme-color" content="#0b3f20" />

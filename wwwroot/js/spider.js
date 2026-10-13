@@ -144,5 +144,125 @@ window.spider = (() => {
         return new Promise(res => setTimeout(res, 340 + ids.length * 15));
     }
 
-    return { init, dispose, language, flyToStock };
+    // Drop the offline cache and service worker, then reload from the server
+    async function update() {
+        if (!navigator.onLine) return 'offline';
+        try {
+            const regs = await navigator.serviceWorker?.getRegistrations() ?? [];
+            await Promise.all(regs.map(r => r.unregister()));
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+        } catch { /* ignore, reload anyway */ }
+        location.reload();
+        return 'ok';
+    }
+
+    // Completed run: cards fly one by one (Ace first) to the pile slot in the top row
+    function flyToFoundation(ids, index) {
+        const slot = board.querySelectorAll('.slot')[Math.max(0, Math.min(index, 9))];
+        if (!slot) return Promise.resolve();
+        const s = slot.getBoundingClientRect();
+        const top = board.getBoundingClientRect().top;
+        const els = ids
+            .map(id => board.querySelector(`.cards .card[data-id="${id}"]`))
+            .filter(Boolean)
+            .sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top);
+        els.forEach((el, i) => {
+            const r = el.getBoundingClientRect();
+            const delay = i * 45;
+            el.classList.remove('dragging');
+            el.style.zIndex = 3000 - i;
+            el.style.transition = `transform .45s cubic-bezier(.3,.7,.3,1) ${delay}ms`;
+            // Keep any drag offset as the start, then travel to the pile
+            el.style.transform = `translate(${s.left - r.left + (parseFloat(getComputedStyle(el).transform.split(',')[4]) || 0)}px, ${top - r.top + (parseFloat(getComputedStyle(el).transform.split(',')[5]) || 0)}px) rotate(${(i % 2 ? 1 : -1) * 4}deg)`;
+        });
+        return new Promise(res => setTimeout(res, 480 + els.length * 45));
+    }
+
+    // Win celebration: ticker-tape / confetti shower on a full-screen canvas
+    function celebrate(seconds = 6) {
+        const canvas = document.createElement('canvas');
+        canvas.className = 'confetti';
+        document.body.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const resize = () => {
+            canvas.width = innerWidth * dpr;
+            canvas.height = innerHeight * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        };
+        resize();
+        addEventListener('resize', resize);
+
+        const colors = ['#ffd60a', '#ff4d6d', '#4cc9f0', '#80ed99', '#f72585', '#ffffff', '#ff9f1c', '#9b5de5'];
+        const pieces = [];
+        const spawn = n => {
+            for (let i = 0; i < n; i++) {
+                const ribbon = Math.random() < .35;
+                pieces.push({
+                    x: Math.random() * innerWidth,
+                    y: -20 - Math.random() * 60,
+                    w: ribbon ? 4 + Math.random() * 3 : 7 + Math.random() * 6,
+                    h: ribbon ? 18 + Math.random() * 16 : 4 + Math.random() * 6,
+                    vx: (Math.random() - .5) * 2.5,
+                    vy: 2 + Math.random() * 3.5,
+                    rot: Math.random() * Math.PI * 2,
+                    vr: (Math.random() - .5) * .25,
+                    flip: Math.random() * Math.PI * 2,
+                    vf: .08 + Math.random() * .12,
+                    sway: Math.random() * Math.PI * 2,
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+        };
+
+        // Opening bursts from both lower corners
+        const burst = (x, dir) => {
+            for (let i = 0; i < 70; i++) {
+                const a = -Math.PI / 2 + dir * (.2 + Math.random() * .6);
+                const s = 9 + Math.random() * 9;
+                pieces.push({
+                    x, y: innerHeight, w: 7 + Math.random() * 6, h: 4 + Math.random() * 6,
+                    vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+                    rot: Math.random() * 6, vr: (Math.random() - .5) * .3,
+                    flip: Math.random() * 6, vf: .1 + Math.random() * .1, sway: Math.random() * 6,
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+        };
+        burst(0, 1);
+        burst(innerWidth, -1);
+
+        const end = performance.now() + seconds * 1000;
+        let last = performance.now();
+        const frame = now => {
+            const dt = Math.min((now - last) / 16.7, 3);
+            last = now;
+            if (now < end - 2000) spawn(4);
+            ctx.clearRect(0, 0, innerWidth, innerHeight);
+            for (let i = pieces.length - 1; i >= 0; i--) {
+                const p = pieces[i];
+                p.vy = Math.min(p.vy + .12 * dt, 4.5);
+                p.vx *= .99;
+                p.sway += .05 * dt;
+                p.x += (p.vx + Math.sin(p.sway) * .8) * dt;
+                p.y += p.vy * dt;
+                p.rot += p.vr * dt;
+                p.flip += p.vf * dt;
+                if (p.y > innerHeight + 40) { pieces.splice(i, 1); continue; }
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rot);
+                ctx.scale(1, Math.cos(p.flip));   // tumbling paper
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.restore();
+            }
+            if (now < end || pieces.length) requestAnimationFrame(frame);
+            else { removeEventListener('resize', resize); canvas.remove(); }
+        };
+        requestAnimationFrame(frame);
+    }
+
+    return { init, dispose, language, flyToStock, flyToFoundation, update, celebrate };
 })();

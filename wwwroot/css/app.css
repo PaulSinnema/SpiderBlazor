@@ -133,6 +133,9 @@ html, body {
 
 .card.dragging { transition: none; z-index: 1000 !important; }
 .card.lifted { z-index: 900 !important; }
+
+/* Win confetti canvas, above the win dialog, never blocks taps */
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 2500; pointer-events: none; }
 .card.peek { z-index: 1500 !important; transform: scale(1.06); box-shadow: 0 10px 28px rgba(0, 0, 0, .55); transition: transform .15s ease; }
 .card.hint { box-shadow: 0 0 0 3px #ffd60a, 0 0 12px #ffd60a; }
 .card.shake { animation: shake .3s linear; }
@@ -141,6 +144,7 @@ html, body {
 /* Undo: slower, clearly visible slide back; reappearing cards pop in */
 .board.undoing .card { transition-duration: .4s; transition-timing-function: cubic-bezier(.2, .8, .2, 1); }
 .card.return { animation: return-in .4s ease-out both; }
+.toprow > .card.up { animation: return-in .35s ease-out both; }
 
 @keyframes return-in {
     from { opacity: 0; scale: .85; translate: 0 -12px; }
@@ -214,7 +218,7 @@ html, body {
 /* Five equal tiles */
 .sheet-buttons {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 96px));
+    grid-template-columns: repeat(6, minmax(0, 96px));
     justify-content: center;
     gap: 10px;
 }
@@ -269,9 +273,10 @@ html, body {
 .sheet-btn.undo { --accent: #3a7bd5; }
 .sheet-btn.hint { --accent: #d9a400; }
 .sheet-btn.settings { --accent: #8a63d2; }
+.sheet-btn.update { --accent: #1a9fa3; }
 
 @media (max-width: 480px) {
-    .sheet-buttons { gap: 6px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .sheet-buttons { gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .sheet { padding-left: 8px; padding-right: 8px; }
     .sheet-btn { height: 74px; padding: 6px 1px; font-size: 10px; letter-spacing: -.02em; border-radius: 13px; }
     .sheet-btn .chip { width: 34px; height: 34px; }

@@ -61,6 +61,7 @@
         <button class="sheet-btn undo" @onclick="Undo" disabled="@(!game.CanUndo)">@Icon("undo")<span>@T("Undo")</span></button>
         <button class="sheet-btn hint" @onclick="HintFromMenu">@Icon("hint")<span>@T("Hint")</span></button>
         <button class="sheet-btn settings" @onclick="OpenSettings">@Icon("settings")<span>@T("Settings")</span></button>
+        <button class="sheet-btn update" @onclick="UpdateApp">@Icon("update")<span>@T("Update")</span></button>
     </div>
 </nav>
 
@@ -212,9 +213,11 @@ else if (game.IsWon)
     {
         if (game.IsWon || col < 0 || col > 9 || index < 0 || index >= game.Columns[col].Count) return;
         var card = game.Columns[col][index];
+        var before = VisibleIds();
         if (game.Tap(col, index))
         {
             freshOrder.Clear();
+            await AnimateCollectedAsync(before);
             await AfterChangeAsync();
             return;
         }
@@ -231,10 +234,24 @@ else if (game.IsWon)
     [JSInvokable]
     public async Task<bool> OnDrop(int from, int index, int to)
     {
+        var before = VisibleIds();
         if (game.IsWon || !game.Move(from, index, to)) return false;
         freshOrder.Clear();
+        await AnimateCollectedAsync(before);
         await AfterChangeAsync();
         return true;
+    }
+
+    private HashSet<int> VisibleIds() => game.Columns.SelectMany(c => c).Select(c => c.Id).ToHashSet();
+
+    // A completed K..A run was removed: let its cards fly to the top-left pile before re-rendering
+    private async Task AnimateCollectedAsync(HashSet<int> before)
+    {
+        var now = VisibleIds();
+        var gone = before.Where(id => !now.Contains(id)).ToArray();
+        if (gone.Length == 0) return;
+        try { await JS.InvokeVoidAsync("spider.flyToFoundation", gone, game.State.Completed.Count - 1); }
+        catch { /* cosmetic only */ }
     }
 
     // MARK: Actions
@@ -275,6 +292,15 @@ else if (game.IsWon)
         await ShowHint();
     }
 
+    // Fetch the newest version from the server; game state in localStorage is kept
+    private async Task UpdateApp()
+    {
+        menuOpen = false;
+        Flash(T("Updating"));
+        var result = await JS.InvokeAsync<string>("spider.update");
+        if (result == "offline") Flash(T("Offline"));
+    }
+
     private void OpenSettings()
     {
         menuOpen = false;
@@ -289,7 +315,9 @@ else if (game.IsWon)
             Flash(T("FillEmpty"));
             return;
         }
+        var before = VisibleIds();
         var ids = game.Deal();
+        await AnimateCollectedAsync(before);
         freshOrder.Clear();
         for (var i = 0; i < ids.Count; i++) freshOrder[ids[i]] = i;
         await AfterChangeAsync();
@@ -370,6 +398,7 @@ else if (game.IsWon)
         {
             winRecorded = true;
             wins[game.State.SuitCount switch { 1 => 0, 2 => 1, _ => 2 }]++;
+            try { await JS.InvokeVoidAsync("spider.celebrate", 6); } catch { /* cosmetic only */ }
             await SetItemAsync(WinsKey, JsonSerializer.Serialize(wins, SpiderJson.Default.Int32Array));
         }
         await SetItemAsync(SaveKey, JsonSerializer.Serialize(game.State, SpiderJson.Default.GameState));
@@ -542,6 +571,7 @@ else if (game.IsWon)
             "new" => "<rect x=\"6\" y=\"3\" width=\"12\" height=\"18\" rx=\"2\"/><path d=\"M12 9v6M9 12h6\"/>",
             "restart" => "<path d=\"M3.5 12a8.5 8.5 0 1 0 2.6-6.1\"/><path d=\"M3 4v5h5\"/>",
             "undo" => "<path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10.5a5.5 5.5 0 0 1 0 11H11\"/>",
+            "update" => "<path d=\"M7 17a4.5 4.5 0 0 1-.7-8.9A6 6 0 0 1 17.8 8 4.5 4.5 0 0 1 17 17\"/><path d=\"M12 11v9M9 17l3 3 3-3\"/>",
             "hint" => "<path d=\"M9 18h6M10 21h4\"/><path d=\"M12 3a6 6 0 0 0-3.8 10.6c.6.5.8 1.2.8 1.9V16h6v-.5c0-.7.2-1.4.8-1.9A6 6 0 0 0 12 3z\"/>",
             _ => "<path d=\"M4 7h9M17 7h3M4 17h3M11 17h9\"/><circle cx=\"15\" cy=\"7\" r=\"2\"/><circle cx=\"9\" cy=\"17\" r=\"2\"/>"
         };

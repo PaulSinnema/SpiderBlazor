@@ -45,14 +45,28 @@ window.spider = (() => {
             id: e.pointerId,
             movable: card.classList.contains('movable'),
             moved: false,
-            els: []
+            els: [],
+            card,
+            peeked: false,
+            timer: null
         };
+        // Press and hold on a fixed face-up card: show it fully until release
+        if (!drag.movable && card.classList.contains('up')) {
+            const d = drag;
+            d.timer = setTimeout(() => { d.peeked = true; card.classList.add('peek'); }, 250);
+        }
+    }
+
+    function endPeek(d) {
+        clearTimeout(d.timer);
+        d.card.classList.remove('peek');
     }
 
     function move(e) {
         if (!drag || e.pointerId !== drag.id) return;
         const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         if (!drag.moved) {
+            if (!drag.peeked && Math.hypot(dx, dy) >= 6) clearTimeout(drag.timer);
             if (!drag.movable || Math.hypot(dx, dy) < 6) return;
             drag.moved = true;
             drag.els = [...board.querySelectorAll(`.cards .card[data-col="${drag.col}"]`)]
@@ -73,6 +87,8 @@ window.spider = (() => {
         if (!drag || e.pointerId !== drag.id) return;
         const d = drag;
         drag = null;
+        endPeek(d);
+        if (d.peeked) return;
 
         if (!d.moved) {
             await ref?.invokeMethodAsync('OnTap', d.col, d.idx);
@@ -94,6 +110,7 @@ window.spider = (() => {
     function cancel(e) {
         empty = null;
         if (!drag || e.pointerId !== drag.id) return;
+        endPeek(drag);
         drag.els.forEach(el => { el.classList.remove('dragging'); el.style.transform = ''; });
         drag = null;
     }

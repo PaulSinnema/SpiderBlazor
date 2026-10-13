@@ -455,7 +455,7 @@ else if (game.IsWon)
         for (var c = 0; c < 10; c++)
         {
             var col = game.Columns[c];
-            var ys = YOffsets(col, ch);
+            var ys = YOffsets(c, col, ch);
             var x = ColX(c);
             for (var i = 0; i < col.Count; i++)
             {
@@ -469,26 +469,40 @@ else if (game.IsWon)
         return list;
     }
 
-    // Compress spacing when a column gets too tall
-    private double[] YOffsets(List<Card> col, double ch)
+    // Fit a long column: squeeze fixed (non-movable) face-up cards first, then face-down, movable run last
+    private double[] YOffsets(int c, List<Card> col, double ch)
     {
-        var down = ch * 0.12;
-        var up = ch * 0.28;
-        var nDown = col.Count(k => !k.FaceUp);
-        var nUp = Math.Max(col.Count(k => k.FaceUp) - 1, 0);
+        var n = col.Count;
+        var ys = new double[n];
+        if (n == 0) return ys;
+
+        var firstMovable = Enumerable.Range(0, n).FirstOrDefault(i => game.CanPickUp(c, i), n);
+        int nDown = 0, nFixed = 0, nMov = 0;
+        for (var i = 0; i < n - 1; i++)
+        {
+            if (!col[i].FaceUp) nDown++;
+            else if (i < firstMovable) nFixed++;
+            else nMov++;
+        }
+
+        double down = ch * 0.12, fixedStep = ch * 0.28, mov = ch * 0.28;
         var avail = boardH - RowTop - ch - 4;
+        double Need() => nDown * down + nFixed * fixedStep + nMov * mov;
 
-        if (nUp > 0 && nDown * down + nUp * up > avail)
-            up = Math.Max((avail - nDown * down) / nUp, ch * 0.17);
-        if (nDown > 0 && nDown * down + nUp * up > avail)
-            down = Math.Max((avail - nUp * up) / nDown, ch * 0.04);
+        if (nFixed > 0 && Need() > avail)
+            fixedStep = Math.Clamp((avail - nDown * down - nMov * mov) / nFixed, ch * 0.1, fixedStep);
+        if (nDown > 0 && Need() > avail)
+            down = Math.Clamp((avail - nFixed * fixedStep - nMov * mov) / nDown, ch * 0.04, down);
+        if (nMov > 0 && Need() > avail)
+            mov = Math.Clamp((avail - nDown * down - nFixed * fixedStep) / nMov, ch * 0.17, mov);
+        if (nFixed > 0 && Need() > avail)
+            fixedStep = Math.Max((avail - nDown * down - nMov * mov) / nFixed, ch * 0.05);
 
-        var ys = new double[col.Count];
         double y = 0;
-        for (var i = 0; i < col.Count; i++)
+        for (var i = 0; i < n; i++)
         {
             ys[i] = y;
-            y += col[i].FaceUp ? up : down;
+            y += !col[i].FaceUp ? down : i < firstMovable ? fixedStep : mov;
         }
         return ys;
     }

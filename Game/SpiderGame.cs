@@ -10,6 +10,7 @@ public sealed class SpiderGame
     public List<List<Card>> Columns => State.Columns;
     public bool IsWon => State.Completed.Count == 8;
     public bool CanUndo => history.Count > 0;
+    public GameState? Previous => history.Count > 0 ? history[^1] : null;
     public bool CanDeal => State.Stock.Count > 0 && Columns.All(c => c.Count > 0);
     public int DealsLeft => State.Stock.Count / 10;
 

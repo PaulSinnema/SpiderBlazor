@@ -110,5 +110,22 @@ window.spider = (() => {
 
     const language = () => navigator.language || "en";
 
-    return { init, dispose, language };
+    // Undo of a deal: slide the given cards back onto the stock
+    function flyToStock(ids) {
+        const target = board.querySelector('.stock .card:last-child') || board.querySelector('.stock-slot');
+        if (!target) return Promise.resolve();
+        const t = target.getBoundingClientRect();
+        ids.forEach((id, i) => {
+            const el = board.querySelector(`.cards .card[data-id="${id}"]`);
+            if (!el) return;
+            const r = el.getBoundingClientRect();
+            el.style.zIndex = 2000 + i;
+            el.style.transition = `transform .32s ease-in ${i * 15}ms, opacity .32s ease-in ${i * 15}ms`;
+            el.style.transform = `translate(${t.left - r.left}px, ${t.top - r.top}px) scale(.96)`;
+            el.style.opacity = '.6';
+        });
+        return new Promise(res => setTimeout(res, 340 + ids.length * 15));
+    }
+
+    return { init, dispose, language, flyToStock };
 })();

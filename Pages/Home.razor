@@ -9,7 +9,7 @@
 <PageTitle>Spider</PageTitle>
 
 <div class="table">
-    <div class="board @(dimFixed ? "dim-fixed" : "")" @ref="boardEl">
+    <div class="board @(dimFixed ? "dim-fixed" : "") @(undoing ? "undoing" : "")" @ref="boardEl">
         @if (cw > 0)
         {
             <div class="slots">
@@ -21,7 +21,7 @@
             <div class="cards">
                 @foreach (var p in PlaceCards())
                 {
-                    <div @key="p.Card.Id" class="@CardClass(p)" data-col="@p.Col" data-idx="@p.Index" style="@p.Style">
+                    <div @key="p.Card.Id" class="@CardClass(p)" data-id="@p.Card.Id" data-col="@p.Col" data-idx="@p.Index" style="@p.Style">
                         @if (p.Card.FaceUp)
                         {
                             @CardSvg.Face(p.Card.Rank, p.Card.Suit, lang)
@@ -174,7 +174,8 @@ else if (game.IsWon)
     private int? shakeId;
     private string? message;
     private bool showNewGame, showSettings, winRecorded;
-    private bool dimFixed, menuOpen, showRestart;
+    private bool dimFixed, menuOpen, showRestart, undoing;
+    private readonly HashSet<int> returning = [];
 
     private readonly record struct Placed(Card Card, int Col, int Index, string Style);
 
@@ -296,9 +297,27 @@ else if (game.IsWon)
 
     private async Task Undo()
     {
+        if (game.Previous is not { } prev || undoing) return;
+        undoing = true;
+
+        // Undo of a deal: let the dealt cards fly back to the stock first
+        var dealt = game.Columns.SelectMany(c => c).Where(c => prev.Stock.Any(s => s.Id == c.Id)).Select(c => c.Id).ToArray();
+        if (dealt.Length > 0) await JS.InvokeVoidAsync("spider.flyToStock", dealt);
+
+        var visible = game.Columns.SelectMany(c => c).Select(c => c.Id).ToHashSet();
         game.Undo();
+
+        // Cards that reappear (e.g. an undone completed run) fade back in
         freshOrder.Clear();
+        returning.Clear();
+        foreach (var id in game.Columns.SelectMany(c => c).Select(c => c.Id).Where(id => !visible.Contains(id)))
+            returning.Add(id);
+
         await AfterChangeAsync();
+        await Task.Delay(450);
+        returning.Clear();
+        undoing = false;
+        StateHasChanged();
     }
 
     private async Task ShowHint()
@@ -493,6 +512,7 @@ else if (game.IsWon)
         if (IsHinted(p.Col, p.Index)) cls += " hint";
         if (shakeId == p.Card.Id) cls += " shake";
         if (freshOrder.ContainsKey(p.Card.Id)) cls += " fresh";
+        if (returning.Contains(p.Card.Id)) cls += " return";
         return cls;
     }
 

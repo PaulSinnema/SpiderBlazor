@@ -218,7 +218,7 @@ html, body {
 /* Five equal tiles */
 .sheet-buttons {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 96px));
+    grid-template-columns: repeat(5, minmax(0, 96px));
     justify-content: center;
     gap: 10px;
 }
@@ -273,10 +273,13 @@ html, body {
 .sheet-btn.undo { --accent: #3a7bd5; }
 .sheet-btn.hint { --accent: #d9a400; }
 .sheet-btn.settings { --accent: #8a63d2; }
-.sheet-btn.update { --accent: #1a9fa3; }
+/* Update button in settings: teal chip next to the label */
+.update-option .opt-title { display: flex; align-items: center; gap: 10px; }
+.update-option .chip { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #1a9fa3; }
+.update-option .chip svg { width: 18px; height: 18px; color: #fff; }
 
 @media (max-width: 480px) {
-    .sheet-buttons { gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .sheet-buttons { gap: 6px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .sheet { padding-left: 8px; padding-right: 8px; }
     .sheet-btn { height: 74px; padding: 6px 1px; font-size: 10px; letter-spacing: -.02em; border-radius: 13px; }
     .sheet-btn .chip { width: 34px; height: 34px; }

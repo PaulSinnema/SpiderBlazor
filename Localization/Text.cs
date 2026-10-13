@@ -30,6 +30,7 @@ public static class Text
         ["Restart"] = ["Restart", "Opnieuw", "Neu starten", "Recommencer"],
         ["RestartQ"] = ["Replay this deal from the start?", "Dit spel opnieuw vanaf het begin spelen?", "Dieses Spiel von vorne beginnen?", "Rejouer cette donne depuis le début ?"],
         ["Update"] = ["Update", "Bijwerken", "Aktualisieren", "Mettre à jour"],
+        ["UpdateHint"] = ["Get the latest version", "Nieuwste versie ophalen", "Neueste Version laden", "Dernière version"],
         ["Updating"] = ["Updating…", "Bijwerken…", "Aktualisiere…", "Mise à jour…"],
         ["Offline"] = ["No internet connection", "Geen internetverbinding", "Keine Internetverbindung", "Pas de connexion Internet"],
         ["Display"] = ["Display", "Weergave", "Anzeige", "Affichage"],

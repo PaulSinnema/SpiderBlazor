@@ -61,7 +61,6 @@
         <button class="sheet-btn undo" @onclick="Undo" disabled="@(!game.CanUndo)">@Icon("undo")<span>@T("Undo")</span></button>
         <button class="sheet-btn hint" @onclick="HintFromMenu">@Icon("hint")<span>@T("Hint")</span></button>
         <button class="sheet-btn settings" @onclick="OpenSettings">@Icon("settings")<span>@T("Settings")</span></button>
-        <button class="sheet-btn update" @onclick="UpdateApp">@Icon("update")<span>@T("Update")</span></button>
     </div>
 </nav>
 
@@ -106,6 +105,12 @@
                     <button class="option small @(lang == l ? "selected" : "")" @onclick="() => SetLang(l)">@Text.Name(l)</button>
                 }
             </div>
+
+            <h3>App</h3>
+            <button class="option update-option" @onclick="UpdateApp">
+                <span class="opt-title">@Icon("update") @T("Update")</span>
+                <span class="opt-wins">@T("UpdateHint")</span>
+            </button>
 
             <button class="btn secondary" @onclick="() => showSettings = false">@T("Close")</button>
         </div>
@@ -296,6 +301,7 @@ else if (game.IsWon)
     private async Task UpdateApp()
     {
         menuOpen = false;
+        showSettings = false;
         Flash(T("Updating"));
         var result = await JS.InvokeAsync<string>("spider.update");
         if (result == "offline") Flash(T("Offline"));

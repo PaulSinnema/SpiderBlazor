@@ -9,6 +9,7 @@
 <PageTitle>Spider</PageTitle>
 
 <div class="table">
+    <div class="version">v@(AppVersion)</div>
     <div class="board @(dimFixed ? "dim-fixed" : "") @(undoing ? "undoing" : "")" @ref="boardEl">
         @if (cw > 0)
         {
@@ -177,6 +178,7 @@ else if (game.IsWon)
 }
 
 @code {
+    private const string AppVersion = "1.0.1";
     private const string SaveKey = "spider.game";
     private const string WinsKey = "spider.wins";
     private const string SuitsKey = "spider.suits";
@@ -537,7 +539,7 @@ else if (game.IsWon)
             {
                 var delay = freshOrder.TryGetValue(col[i].Id, out var o) ? $"animation-delay:{o * 18}ms;" : "";
                 list.Add(new Placed(col[i], c, i,
-                    $"left:{Px(x)};top:{Px(RowTop + ys[i])};width:{Px(cw)};height:{Px(ch)};font-size:{Px(cw)};z-index:{i + 1};{delay}"));
+                    $"left:{Px(x)};top:{Px(RowTop + ys[i])};width:{Px(cw)};height:{Px(ch)};font-size:{Px(cw)};--z:{i + 1};z-index:{i + 1};{delay}"));
             }
         }
         // Stable DOM order keeps CSS transitions alive when cards change column

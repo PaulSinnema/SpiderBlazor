@@ -131,8 +131,9 @@ html, body {
 /* Optional: darken face-up cards that cannot be moved */
 .board.dim-fixed .card.up:not(.movable) { filter: brightness(.78); }
 
-.card.dragging { transition: none; z-index: 1000 !important; }
-.card.lifted { z-index: 900 !important; }
+/* Raised while dragging/landing, but keep the column order (--z = index in column) */
+.card.dragging { transition: none; z-index: calc(1000 + var(--z, 0)) !important; }
+.card.lifted { z-index: calc(900 + var(--z, 0)) !important; }
 
 /* Win confetti canvas, above the win dialog, never blocks taps */
 .confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 2500; pointer-events: none; }
@@ -319,8 +320,17 @@ html, body {
 
 .sheet-handle.hidden { display: none; }
 
-/* Room above the board and for the handle below it */
-.board { margin: 8px 0 28px; }
+/* Room above the board (version label) and for the handle below it */
+.board { margin: 18px 0 28px; }
+
+.version {
+    position: absolute;
+    top: calc(2px + env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
+    font-size: 11px;
+    opacity: .55;
+    pointer-events: none;
+}
 
 /* Top row: completed runs and stock, full card size */
 .toprow { position: absolute; left: 0; top: 0; right: 0; }

@@ -190,7 +190,7 @@ window.spider = (() => {
         els.forEach((el, i) => {
             const r = el.getBoundingClientRect();
             const delay = i * 45;
-            el.classList.remove('dragging');
+            el.classList.remove('dragging', 'lifted');
             el.style.zIndex = 3000 - i;
             el.style.transition = `transform .45s cubic-bezier(.3,.7,.3,1) ${delay}ms`;
             // Keep any drag offset as the start, then travel to the pile

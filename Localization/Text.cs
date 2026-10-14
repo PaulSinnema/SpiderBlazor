@@ -35,6 +35,8 @@ public static class Text
         ["InstallIos"] = ["In Safari, tap the Share button above, then choose “Add to Home Screen”.", "Tik in Safari op de Deel-knop hierboven en kies daarna „Zet op beginscherm”.", "Tippe in Safari auf die Teilen-Taste oben und wähle dann „Zum Home-Bildschirm“.", "Dans Safari, touchez le bouton Partager ci-dessus, puis « Sur l'écran d'accueil »."],
         ["InstallManual"] = ["Open your browser menu and choose “Install app” or “Add to Home screen”.", "Open het menu van je browser en kies „App installeren” of „Toevoegen aan startscherm”.", "Öffne das Browsermenü und wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.", "Ouvrez le menu du navigateur et choisissez « Installer l'application » ou « Ajouter à l'écran d'accueil »."],
         ["UpdateHint"] = ["Get the latest version", "Nieuwste versie ophalen", "Neueste Version laden", "Dernière version"],
+        ["UpToDate"] = ["You already have the latest version", "Je hebt al de nieuwste versie", "Du hast bereits die neueste Version", "Vous avez déjà la dernière version"],
+        ["NewVersion"] = ["New version available: Settings → Update", "Nieuwe versie beschikbaar: Instellingen → Bijwerken", "Neue Version verfügbar: Einstellungen → Aktualisieren", "Nouvelle version : Paramètres → Mettre à jour"],
         ["Updating"] = ["Updating…", "Bijwerken…", "Aktualisiere…", "Mise à jour…"],
         ["Offline"] = ["No internet connection", "Geen internetverbinding", "Keine Internetverbindung", "Pas de connexion Internet"],
         ["Display"] = ["Display", "Weergave", "Anzeige", "Affichage"],

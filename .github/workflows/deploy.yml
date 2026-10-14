@@ -24,6 +24,12 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # Unique build id, used by the in-app update check
+      - name: Stamp build version
+        run: |
+          proj="$(dirname "$(find . -name SpiderBlazor.csproj | head -n 1)")"
+          echo "{\"build\":\"${{ github.run_number }}-${GITHUB_SHA::7}\"}" > "$proj/wwwroot/version.json"
+
       # Finds the project wherever it sits in the repo
       - name: Publish
         run: dotnet publish "$(find . -name SpiderBlazor.csproj | head -n 1)" -c Release -o release

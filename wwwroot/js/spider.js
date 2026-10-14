@@ -164,16 +164,46 @@ window.spider = (() => {
         return new Promise(res => setTimeout(res, 340 + ids.length * 15));
     }
 
-    // Drop the offline cache and service worker, then reload from the server
+    // Build id of the running app (from SW/HTTP cache) and of the server (cache bypassed)
+    async function localBuild() {
+        try { return (await (await fetch('version.json')).json()).build; } catch { return null; }
+    }
+
+    async function serverBuild() {
+        try { return (await (await fetch('version.json?t=' + Date.now(), { cache: 'no-store' })).json()).build; } catch { return null; }
+    }
+
+    // Returns the server build when it differs from the running one
+    async function checkUpdate() {
+        if (!navigator.onLine) return null;
+        const [local, server] = await Promise.all([localBuild(), serverBuild()]);
+        return server && local && server !== local ? server : null;
+    }
+
+    // Bypass GitHub Pages (max-age=600) + Safari HTTP cache, drop SW caches, reload fresh
     async function update() {
         if (!navigator.onLine) return 'offline';
+        const server = await serverBuild();
+        if (!server) return 'offline';
+        const local = await localBuild();
+        if (local === server) return 'current';
+
         try {
             const regs = await navigator.serviceWorker?.getRegistrations() ?? [];
             await Promise.all(regs.map(r => r.unregister()));
             const keys = await caches.keys();
             await Promise.all(keys.map(k => caches.delete(k)));
-        } catch { /* ignore, reload anyway */ }
-        location.reload();
+
+            // Re-fetch every asset with cache:'reload' so the HTTP cache holds the new files
+            const core = ['index.html', 'version.json', 'service-worker.js', 'manifest.webmanifest', 'css/app.css', 'js/spider.js',
+                '_framework/blazor.webassembly.js', '_framework/dotnet.js'];
+            const list = await (await fetch('service-worker-assets.js', { cache: 'reload' })).text();
+            const urls = [...list.matchAll(/"url":\s*"([^"]+)"/g)].map(m => m[1]);
+            await Promise.all([...new Set([...core, ...urls])].map(u => fetch(u, { cache: 'reload' }).catch(() => { })));
+        } catch { /* reload anyway */ }
+
+        // Query string forces a fresh navigation instead of a cached index.html
+        location.replace(location.pathname + '?v=' + encodeURIComponent(server));
         return 'ok';
     }
 
@@ -284,5 +314,5 @@ window.spider = (() => {
         requestAnimationFrame(frame);
     }
 
-    return { init, dispose, language, flyToStock, flyToFoundation, update, celebrate, installState, install };
+    return { init, dispose, language, flyToStock, flyToFoundation, update, checkUpdate, localBuild, celebrate, installState, install };
 })();

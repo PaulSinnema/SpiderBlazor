@@ -9,7 +9,7 @@
 <PageTitle>Spider</PageTitle>
 
 <div class="table">
-    <div class="version">v@(AppVersion)</div>
+    <div class="version">v@(AppVersion)@(buildId is null or "dev" ? "" : $" ({buildId})")</div>
     <div class="board @(dimFixed ? "dim-fixed" : "") @(undoing ? "undoing" : "")" @ref="boardEl">
         @if (cw > 0)
         {
@@ -210,6 +210,7 @@ else if (game.IsWon)
     private bool dimFixed, menuOpen, showRestart, undoing;
     private string installState = "manual";
     private string? installHelp;
+    private string? buildId;
     private readonly HashSet<int> returning = [];
 
     private readonly record struct Placed(Card Card, int Col, int Index, string Style);
@@ -226,6 +227,20 @@ else if (game.IsWon)
         await LoadAsync();
         selfRef = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("spider.init", selfRef, boardEl);
+        await CheckBuildAsync();
+    }
+
+    // Show the running build id and hint when the server has a newer one
+    private async Task CheckBuildAsync()
+    {
+        try
+        {
+            buildId = await JS.InvokeAsync<string?>("spider.localBuild");
+            StateHasChanged();
+            if (await JS.InvokeAsync<string?>("spider.checkUpdate") is not null)
+                Flash(T("NewVersion"));
+        }
+        catch { /* offline or no version.json */ }
     }
 
     // MARK: JS callbacks
@@ -334,6 +349,7 @@ else if (game.IsWon)
         Flash(T("Updating"));
         var result = await JS.InvokeAsync<string>("spider.update");
         if (result == "offline") Flash(T("Offline"));
+        else if (result == "current") Flash(T("UpToDate"));
     }
 
     private async Task OpenSettings()

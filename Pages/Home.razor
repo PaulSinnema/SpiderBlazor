@@ -99,6 +99,18 @@
                 <span class="opt-wins">@T(dimFixed ? "On" : "Off")</span>
             </button>
 
+            <h3>@T("Animations")</h3>
+            <div class="langs anims">
+                @foreach (var m in AnimModes)
+                {
+                    <button class="option small @(animMode == m ? "selected" : "")" @onclick="() => SetAnimMode(m)">@T("Anim_" + m)</button>
+                }
+            </div>
+            @if (animMode == "auto")
+            {
+                <p class="note">@T(animLite ? "AnimDetectedLite" : "AnimDetectedFull")</p>
+            }
+
             <h3>@T("Language")</h3>
             <div class="langs">
                 @foreach (var l in Text.All)
@@ -178,8 +190,10 @@ else if (game.IsWon)
 }
 
 @code {
-    private const string AppVersion = "1.0.2";
+    private const string AppVersion = "1.0.3";
     private const string SaveKey = "spider.game";
+    private const string AnimKey = "spider.anim";
+    private static readonly string[] AnimModes = ["auto", "full", "lite"];
     private const string WinsKey = "spider.wins";
     private const string SuitsKey = "spider.suits";
     private const string LangKey = "spider.lang";
@@ -211,6 +225,8 @@ else if (game.IsWon)
     private string installState = "manual";
     private string? installHelp;
     private string? buildId;
+    private string animMode = "auto";
+    private bool animLite;
     private readonly HashSet<int> returning = [];
 
     private readonly record struct Placed(Card Card, int Col, int Index, string Style);
@@ -227,7 +243,30 @@ else if (game.IsWon)
         await LoadAsync();
         selfRef = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("spider.init", selfRef, boardEl);
+        try
+        {
+            animMode = await JS.InvokeAsync<string?>("localStorage.getItem", AnimKey) is { } m && AnimModes.Contains(m) ? m : "auto";
+            animLite = await JS.InvokeAsync<bool>("spider.setAnimMode", animMode);
+        }
+        catch { /* keep full animations */ }
         await CheckBuildAsync();
+    }
+
+    // Called from JS when auto-detection finds the device too slow
+    [JSInvokable]
+    public void OnLiteChanged(bool lite)
+    {
+        animLite = lite;
+        StateHasChanged();
+    }
+
+    private async Task SetAnimMode(string mode)
+    {
+        animMode = mode;
+        await SetItemAsync(AnimKey, mode);
+        // Re-evaluate from scratch when switching back to automatic
+        if (mode == "auto") await JS.InvokeVoidAsync("spider.resetSlow");
+        animLite = await JS.InvokeAsync<bool>("spider.setAnimMode", mode);
     }
 
     // Show the running build id and hint when the server has a newer one

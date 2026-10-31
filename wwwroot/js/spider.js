@@ -22,9 +22,74 @@ window.spider = (() => {
         return choice.outcome === 'accepted' ? 'installed' : 'dismissed';
     }
 
+    // MARK: Performance / lite animations
+
+    const SLOW_KEY = 'spider.slow';
+    let lite = false, animMode = 'auto', sampling = false, badWindows = 0;
+
+    function applyLite(on) {
+        lite = on;
+        document.body.classList.toggle('lite', on);
+    }
+
+    // Cheap static hints; iOS exposes none of these, so the frame monitor does the real work
+    function staticSlow() {
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
+        const cores = navigator.hardwareConcurrency || 8;
+        const mem = navigator.deviceMemory || 8;
+        return cores <= 2 || mem <= 2;
+    }
+
+    function storedSlow() {
+        try { return localStorage.getItem(SLOW_KEY) === '1'; } catch { return false; }
+    }
+
+    // mode: 'auto' | 'full' | 'lite'; returns whether lite is active
+    function setAnimMode(mode) {
+        animMode = mode;
+        applyLite(mode === 'lite' || (mode === 'auto' && (storedSlow() || staticSlow())));
+        return lite;
+    }
+
+    // Measure frame times while a CSS animation/transition runs on the board
+    function sampleFrames() {
+        if (sampling || lite || animMode !== 'auto') return;
+        sampling = true;
+        const times = [];
+        let last = performance.now();
+        const start = last;
+        const tick = now => {
+            times.push(now - last);
+            last = now;
+            if (now - start < 600) { requestAnimationFrame(tick); return; }
+            sampling = false;
+            times.shift();
+            if (times.length < 5) return;
+            const sorted = [...times].sort((a, b) => a - b);
+            const median = sorted[sorted.length >> 1];
+            const jank = times.filter(t => t > 40).length / times.length;
+            // Janky window: under ~45 fps or many long frames
+            if (median > 22 || jank > .25) badWindows++;
+            else badWindows = Math.max(0, badWindows - 1);
+            if (badWindows >= 3) {
+                try { localStorage.setItem(SLOW_KEY, '1'); } catch { }
+                applyLite(true);
+                ref?.invokeMethodAsync('OnLiteChanged', true);
+            }
+        };
+        requestAnimationFrame(tick);
+    }
+
+    function resetSlow() {
+        try { localStorage.removeItem(SLOW_KEY); } catch { }
+        badWindows = 0;
+    }
+
     function init(dotnet, el) {
         ref = dotnet;
         board = el;
+        board.addEventListener('transitionstart', sampleFrames);
+        board.addEventListener('animationstart', sampleFrames);
         observer = new ResizeObserver(report);
         observer.observe(board);
         board.addEventListener('pointerdown', down);
@@ -36,6 +101,8 @@ window.spider = (() => {
 
     function dispose() {
         observer?.disconnect();
+        board?.removeEventListener('transitionstart', sampleFrames);
+        board?.removeEventListener('animationstart', sampleFrames);
         board?.removeEventListener('pointerdown', down);
         window.removeEventListener('pointermove', move);
         window.removeEventListener('pointerup', up);
@@ -152,16 +219,17 @@ window.spider = (() => {
         const target = board.querySelector('.stock .card:last-child') || board.querySelector('.stock-slot');
         if (!target) return Promise.resolve();
         const t = target.getBoundingClientRect();
-        ids.forEach((id, i) => {
-            const el = board.querySelector(`.cards .card[data-id="${id}"]`);
-            if (!el) return;
-            const r = el.getBoundingClientRect();
+        const dur = lite ? 200 : 320, step = lite ? 0 : 15;
+        // Read all rects first, then write (avoids layout thrashing)
+        const items = ids.map(id => board.querySelector(`.cards .card[data-id="${id}"]`)).filter(Boolean)
+            .map(el => ({ el, r: el.getBoundingClientRect() }));
+        items.forEach(({ el, r }, i) => {
             el.style.zIndex = 2000 + i;
-            el.style.transition = `transform .32s ease-in ${i * 15}ms, opacity .32s ease-in ${i * 15}ms`;
-            el.style.transform = `translate(${t.left - r.left}px, ${t.top - r.top}px) scale(.96)`;
+            el.style.transition = `transform ${dur}ms ease-in ${i * step}ms, opacity ${dur}ms ease-in ${i * step}ms`;
+            el.style.transform = `translate(${t.left - r.left}px, ${t.top - r.top}px)`;
             el.style.opacity = '.6';
         });
-        return new Promise(res => setTimeout(res, 340 + ids.length * 15));
+        return new Promise(res => setTimeout(res, dur + 20 + items.length * step));
     }
 
     // Build id of the running app (from SW/HTTP cache) and of the server (cache bypassed)
@@ -217,16 +285,21 @@ window.spider = (() => {
             .map(id => board.querySelector(`.cards .card[data-id="${id}"]`))
             .filter(Boolean)
             .sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top);
-        els.forEach((el, i) => {
-            const r = el.getBoundingClientRect();
-            const delay = i * 45;
+        const dur = lite ? 260 : 450, step = lite ? 12 : 45;
+        // Read all geometry first, then write (avoids layout thrashing on slow devices)
+        const items = els.map(el => {
+            const m = getComputedStyle(el).transform.split(',');
+            return { el, r: el.getBoundingClientRect(), ox: parseFloat(m[4]) || 0, oy: parseFloat(m[5]) || 0 };
+        });
+        items.forEach(({ el, r, ox, oy }, i) => {
             el.classList.remove('dragging', 'lifted');
             el.style.zIndex = 3000 - i;
-            el.style.transition = `transform .45s cubic-bezier(.3,.7,.3,1) ${delay}ms`;
+            el.style.transition = `transform ${dur}ms cubic-bezier(.3,.7,.3,1) ${i * step}ms`;
             // Keep any drag offset as the start, then travel to the pile
-            el.style.transform = `translate(${s.left - r.left + (parseFloat(getComputedStyle(el).transform.split(',')[4]) || 0)}px, ${top - r.top + (parseFloat(getComputedStyle(el).transform.split(',')[5]) || 0)}px) rotate(${(i % 2 ? 1 : -1) * 4}deg)`;
+            const tilt = lite ? '' : ` rotate(${(i % 2 ? 1 : -1) * 4}deg)`;
+            el.style.transform = `translate(${s.left - r.left + ox}px, ${top - r.top + oy}px)${tilt}`;
         });
-        return new Promise(res => setTimeout(res, 480 + els.length * 45));
+        return new Promise(res => setTimeout(res, dur + 30 + items.length * step));
     }
 
     // Win celebration: ticker-tape / confetti shower on a full-screen canvas
@@ -235,7 +308,10 @@ window.spider = (() => {
         canvas.className = 'confetti';
         document.body.appendChild(canvas);
         const ctx = canvas.getContext('2d');
-        const dpr = window.devicePixelRatio || 1;
+        // Lite: render at 1x and with far fewer pieces
+        const dpr = lite ? 1 : (window.devicePixelRatio || 1);
+        const burstCount = lite ? 25 : 70, spawnRate = lite ? 1 : 4;
+        if (lite) seconds = Math.min(seconds, 4);
         const resize = () => {
             canvas.width = innerWidth * dpr;
             canvas.height = innerHeight * dpr;
@@ -268,7 +344,7 @@ window.spider = (() => {
 
         // Opening bursts from both lower corners
         const burst = (x, dir) => {
-            for (let i = 0; i < 70; i++) {
+            for (let i = 0; i < burstCount; i++) {
                 const a = -Math.PI / 2 + dir * (.2 + Math.random() * .6);
                 const s = 9 + Math.random() * 9;
                 pieces.push({
@@ -288,7 +364,7 @@ window.spider = (() => {
         const frame = now => {
             const dt = Math.min((now - last) / 16.7, 3);
             last = now;
-            if (now < end - 2000) spawn(4);
+            if (now < end - 2000) spawn(spawnRate);
             ctx.clearRect(0, 0, innerWidth, innerHeight);
             for (let i = pieces.length - 1; i >= 0; i--) {
                 const p = pieces[i];
@@ -314,5 +390,5 @@ window.spider = (() => {
         requestAnimationFrame(frame);
     }
 
-    return { init, dispose, language, flyToStock, flyToFoundation, update, checkUpdate, localBuild, celebrate, installState, install };
+    return { init, dispose, language, flyToStock, flyToFoundation, update, checkUpdate, localBuild, celebrate, installState, install, setAnimMode, resetSlow };
 })();
